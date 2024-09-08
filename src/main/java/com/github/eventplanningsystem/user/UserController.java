@@ -15,12 +15,12 @@ public class UserController {
     private final UserService userService;
     private final JWTService jwtService;
 
-//    @Operation(summary = "Получение данных о текущем пользователе")
-//    @SecurityRequirement(name = "Bearer Authentication")
-//    @GetMapping("/Me")
-//    public UserDto me(HttpServletRequest request) {
-//        return jwtService.accessUser(request, userService::userInfo);
-//    }
+    @Operation(summary = "Получение данных о текущем пользователе")
+    @SecurityRequirement(name = "Bearer Authentication")
+    @GetMapping("/Me")
+    public UserDto me(HttpServletRequest request) {
+        return jwtService.accessUser(request, userService::userInfo);
+    }
 
     @Operation(summary = "Получение нового jwt токена пользователя")
     @PostMapping("/SingIn")
@@ -34,10 +34,10 @@ public class UserController {
         return userService.signUp(request);
     }
 
-//    @Operation(summary = "Обновление своего аккаунта")
-//    @SecurityRequirement(name = "Bearer Authentication")
-//    @PutMapping("/Update")
-//    public AuthenticationResponse update(HttpServletRequest request, @RequestBody UpdateRequest updateRequest) {
-//        return jwtService.accessUser(request, userId -> userService.update(userId, updateRequest));
-//    }
+    @Operation(summary = "Обновление своего аккаунта")
+    @SecurityRequirement(name = "Bearer Authentication")
+    @PutMapping("/Update")
+    public AuthenticationResponse update(HttpServletRequest request, @RequestBody UpdateRequest updateRequest) {
+        return jwtService.accessUser(request, username -> userService.update(username, updateRequest));
+    }
 }

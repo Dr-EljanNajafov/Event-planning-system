@@ -24,9 +24,9 @@ public class JWTService {
 
     private static final String SECRET_KEY = "9311eceb51e8a2f2d7a5825e6178dcf27d102a8173eb003cf4a0de6bc8e29df0878798a4de52de55ab32c4dcdb123ed35a0bd43c3ac2e499e95a1a95222c3947";
 
-    public <T> T accessUser(HttpServletRequest request, Function<Long, T> userConsumer) {
+    public <T> T accessUser(HttpServletRequest request, Function<String, T> userConsumer) {
         String username = extractClaim(token(request).orElseThrow(), Claims::getSubject);
-        return userConsumer.apply(Long.valueOf(username));
+        return userConsumer.apply(username);
     }
 
     public Optional<String> token(HttpServletRequest request) {

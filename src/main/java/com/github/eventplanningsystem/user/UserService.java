@@ -20,13 +20,12 @@ public class UserService {
     private final AuthenticationManager authenticationManager;
 
     // Retrieve user info by ID
-    public UserDto userInfo(long id) {
-        UserE user = user(id);
+    public UserDto userInfo(String username) {
+        UserE user = user(username);
         return new UserDto(
                 user.getId(),
                 user.getUsername(),
-                user.getRole(),
-                user.getInvitations() // Assuming invitations is a valid field in the User class
+                user.getRole()
         );
     }
 
@@ -63,10 +62,10 @@ public class UserService {
     }
 
     // Update user information
-    public AuthenticationResponse update(long id, UpdateRequest request) {
-        checkUsername(request.getUsername(), id);
+    public AuthenticationResponse update(String username, UpdateRequest request) {
+        checkUsername(request.getUsername(), username);
 
-        UserE user = user(id);
+        UserE user = user(username);
         user.setUsername(request.getUsername());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         userRepository.save(user);
@@ -75,18 +74,18 @@ public class UserService {
     }
 
     // Retrieve user by ID
-    public UserE user(long id) {
-        return userRepository.findById(id)
+    public UserE user(String username) {
+        return userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
-                        "User with id %d doesn't exist".formatted(id)
+                        "User with username %s doesn't exist".formatted(username)
                 ));
     }
 
     // Check if username is already in use
-    public void checkUsername(String username, long id) {
+    public void checkUsername(String username, String username1) {
         Optional<UserE> userOptional = userRepository.findByUsername(username);
-        if (userOptional.isPresent() && !userOptional.get().getId().equals(id)) {
+        if (userOptional.isPresent() && !userOptional.get().getUsername().equals(username1)) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Username '%s' is already in use".formatted(username)

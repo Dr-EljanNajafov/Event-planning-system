@@ -11,8 +11,7 @@ public class UserDtoMapper implements Function<UserE, UserDto> {
         return new UserDto(
                 user.getId(),
                 user.getUsername(),
-                user.getRole(),
-                user.getInvitations()
+                user.getRole()
         );
     }
 }
