@@ -1,7 +1,9 @@
 package com.github.eventplanningsystem.event;
 
+import com.github.eventplanningsystem.invitation.InvitationRepository;
 import com.github.eventplanningsystem.user.UserE;
 import com.github.eventplanningsystem.user.UserRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -15,7 +17,9 @@ public class EventService {
 
     private final EventRepository eventRepository;
     private final UserRepository userRepository;
-    public EventDto eventInfo(long id){
+    private final InvitationRepository invitationRepository;
+
+    public EventDto eventInfo(long id) {
         Event event = event(id);
         return new EventDto(
                 event.getId(),
@@ -69,6 +73,7 @@ public class EventService {
         event.setDescription(eventUpdateRequest.getDescription());
     }
 
+    @Transactional
     public void delete(long eventId, String username) {
         Event event = event(eventId);
 
@@ -84,8 +89,21 @@ public class EventService {
             );
         }
 
+        deleteEventWithInvitations(eventId);
+    }
+
+    @Transactional
+    public void deleteEventWithInvitations(Long eventId) {
+        Event event = eventRepository.findById(eventId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Event not found"));
+
+        // Удалить все связанные приглашения
+        invitationRepository.deleteAllByEvent(event);
+
+        // Удалить событие
         eventRepository.delete(event);
     }
+
 
     public Event event(long id) {
         Optional<Event> eventOptional = eventRepository.findById(id);
