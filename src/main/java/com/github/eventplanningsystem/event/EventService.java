@@ -77,7 +77,7 @@ public class EventService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Owner not found"));
 
         // Проверить, что именно владелец пытается удалить событие
-        if (!event.getOwner().equals(owner)) {
+        if (!event.getOwner().getId().equals(owner.getId())) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Only owner of event with id %d can delete it".formatted(eventId)
