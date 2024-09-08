@@ -19,7 +19,7 @@ public class UserService {
     private final JWTService jwtService;
     private final AuthenticationManager authenticationManager;
 
-    // Retrieve user info by ID
+    // Retrieve user info by username
     public UserDto userInfo(String username) {
         UserE user = user(username);
         return new UserDto(

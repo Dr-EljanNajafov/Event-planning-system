@@ -43,7 +43,7 @@ public class SecurityConfiguration {
                                 .permitAll()
                                 .requestMatchers(
                                         HttpMethod.GET,
-                                        "api/report/**"
+                                        "api/event/**"
                                 )
                                 .permitAll()
                                 .anyRequest()

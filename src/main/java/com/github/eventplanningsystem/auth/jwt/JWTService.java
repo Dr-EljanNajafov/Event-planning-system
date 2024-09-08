@@ -29,6 +29,13 @@ public class JWTService {
         return userConsumer.apply(username);
     }
 
+    public void accessUserVoid(HttpServletRequest request, Consumer<String> userConsumer) {
+        accessUser(request, username -> {
+            userConsumer.accept(username);  // Передаем строковое имя пользователя
+            return null;
+        });
+    }
+
     public Optional<String> token(HttpServletRequest request) {
         final String authHeader = request.getHeader("Authorization");
         final String jwt;
