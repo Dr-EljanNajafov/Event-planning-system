@@ -1,7 +1,7 @@
 package com.github.eventplanningsystem.event;
 
 import com.github.eventplanningsystem.invitation.Invitation;
-import com.github.eventplanningsystem.user.User;
+import com.github.eventplanningsystem.user.UserE;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -37,7 +37,7 @@ public class Event {
     private String description; // Описание мероприятия
 
     @ManyToOne
-    private User owner; // Владелец мероприятия
+    private UserE owner; // Владелец мероприятия
 
     @OneToMany
     private List<Invitation> invitations;

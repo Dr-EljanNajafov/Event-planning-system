@@ -1,7 +1,7 @@
 package com.github.eventplanningsystem.invitation;
 
 import com.github.eventplanningsystem.event.Event;
-import com.github.eventplanningsystem.user.User;
+import com.github.eventplanningsystem.user.UserE;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -21,7 +21,7 @@ public class Invitation {
     @ManyToOne
     private Event event;
     @ManyToOne
-    private User user;
+    private UserE user;
 
     @Column(nullable = false)
     private InvitationStatus invitationStatus;
