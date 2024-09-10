@@ -1,4 +1,4 @@
-package com.github.eventplanningsystem.report;
+package com.github.eventplanningsystem.admin.report;
 
 
 import jakarta.persistence.Entity;
