@@ -30,7 +30,7 @@ public class SecurityConfiguration {
                         authorizationManagerRequestMatcherRegistry
                                 .requestMatchers(
                                         "/api/user/SingIn",
-                                        "api/user/SingUp",
+                                        "/api/user/SingUp",
                                         "/v3/api-docs",
                                         "/v3/api-docs/**",
                                         "/swagger-ui/**",  // Добавлено правильное разрешение для Swagger UI
@@ -43,7 +43,7 @@ public class SecurityConfiguration {
                                 .permitAll()
                                 .requestMatchers(
                                         HttpMethod.GET,
-                                        "api/event/**"
+                                        "/api/event/**"
                                 )
                                 .permitAll()
                                 .anyRequest()
