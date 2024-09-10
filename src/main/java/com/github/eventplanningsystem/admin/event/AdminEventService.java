@@ -1,5 +1,6 @@
 package com.github.eventplanningsystem.admin.event;
 
+import com.github.eventplanningsystem.admin.report.ReportRepository;
 import com.github.eventplanningsystem.event.Event;
 import com.github.eventplanningsystem.event.EventDto;
 import com.github.eventplanningsystem.event.EventRepository;
@@ -23,6 +24,7 @@ public class AdminEventService {
     private final EventRepository eventRepository;
     private final UserRepository userRepository;
     private final InvitationRepository invitationRepository;
+    private final ReportRepository reportRepository;
 
     public List<Long> events(GetEventRequest request) {
         if (request.getStart()<0 || request.getCount()<0) {
@@ -80,23 +82,29 @@ public class AdminEventService {
     }
 
     public EventDto updateEvent(long id, UpdateEventByAdminRequest request) {
-        Event old = eventService.event(id);
-        Event event = Event
-                .builder()
-                .title(request.getTitle())
-                .startDateTime(request.getStartDateTime())
-                .endDateTime(request.getEndDateTime())
-                .location(request.getLocation())
-                .description(request.getDescription())
-                .build();
-        eventRepository.save(event);
-        return eventInfo(event.getId());
+        // Получаем существующее событие по id
+        Event existingEvent = eventService.event(id);
+
+        // Обновляем поля существующего события
+        existingEvent.setTitle(request.getTitle());
+        existingEvent.setStartDateTime(request.getStartDateTime());
+        existingEvent.setEndDateTime(request.getEndDateTime());
+        existingEvent.setLocation(request.getLocation());
+        existingEvent.setDescription(request.getDescription());
+
+        // Сохраняем обновлённое событие
+        eventRepository.save(existingEvent);
+
+        // Возвращаем информацию об обновлённом событии
+        return eventInfo(existingEvent.getId());
     }
+
 
     public void deleteEvent(long id) {
         Event event = eventRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Event not found"));
         invitationRepository.deleteAllByEvent(event);
+        reportRepository.deleteAllByEvent(event);
         eventRepository.delete(eventService.event(id));
     }
 }

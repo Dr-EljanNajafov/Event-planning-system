@@ -31,11 +31,19 @@ public class AdminUserController {
         return adminService.checkAdmin(request, userId -> service.users(getUserRequest));
     }
 
-    @Operation(summary = "Получение информации об пользователе по username")
+    @Operation(summary = "Получение информации об пользователе по id")
     @SecurityRequirement(name = "Bearer Authentication")
     @GetMapping("/{id}")
     public UserDto userInfo(HttpServletRequest request, @PathVariable long id) {
-        return adminService.checkAdmin(request, service::userInfo);
+        // Сначала находим пользователя по id
+        UserE user = repository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("User not found with id: " + id));
+
+        // Извлекаем username пользователя
+        String username = user.getUsername();
+
+        // Проверяем, является ли текущий пользователь администратором и получаем информацию о пользователе
+        return adminService.checkAdmin(request, userId -> service.userInfo(username));
     }
 
     @Operation(summary = "Создание администратором нового пользователя")
