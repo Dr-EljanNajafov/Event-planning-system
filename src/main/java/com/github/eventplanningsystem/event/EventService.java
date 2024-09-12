@@ -18,9 +18,26 @@ public class EventService {
     private final EventRepository eventRepository;
     private final UserRepository userRepository;
     private final InvitationRepository invitationRepository;
+    private final EventRedisRepository eventRedisRepository; // Redis repository
+
 
     public EventDto eventInfo(long id) {
+        // First, check Redis cache
+        Optional<EventRedis> eventRedisOptional = eventRedisRepository.findById(String.valueOf(id));
+        if (eventRedisOptional.isPresent()) {
+            EventRedis eventRedis = eventRedisOptional.get();
+            return new EventDto(
+                    eventRedis.getId(),
+                    eventRedis.getTitle(),
+                    eventRedis.getStartDateTime(),
+                    eventRedis.getEndDateTime(),
+                    eventRedis.getLocation(),
+                    eventRedis.getDescription()
+            );
+        }
         Event event = event(id);
+        // Cache the event in Redis
+        cacheEventInRedis(event);
         return new EventDto(
                 event.getId(),
                 event.getTitle(),
@@ -46,6 +63,8 @@ public class EventService {
                 .owner(owner)
                 .build();
         eventRepository.save(event);
+        // Cache the event in Redis
+        cacheEventInRedis(event);
         return eventInfo(event.getId());
     }
 
@@ -61,7 +80,9 @@ public class EventService {
         }
 
         updateEvent(request, event);
-        eventRepository.save(event);
+        event = eventRepository.save(event);
+        // Update the cache in Redis
+        cacheEventInRedis(event);
         return eventInfo(id);
     }
 
@@ -90,6 +111,8 @@ public class EventService {
         }
 
         deleteEventWithInvitations(eventId);
+        // Invalidate the cache in Redis
+        eventRedisRepository.deleteById(String.valueOf(eventId));
     }
 
     @Transactional
@@ -114,5 +137,18 @@ public class EventService {
             );
         }
         return eventOptional.get();
+    }
+
+    private void cacheEventInRedis(Event event) {
+        EventRedis eventRedis = new EventRedis();
+        eventRedis.setId(event.getId());
+        eventRedis.setTitle(event.getTitle());
+        eventRedis.setStartDateTime(event.getStartDateTime());
+        eventRedis.setEndDateTime(event.getEndDateTime());
+        eventRedis.setLocation(event.getLocation());
+        eventRedis.setDescription(event.getDescription());
+        eventRedis.setOwnerId(event.getOwner().getId());
+
+        eventRedisRepository.save(eventRedis);
     }
 }
