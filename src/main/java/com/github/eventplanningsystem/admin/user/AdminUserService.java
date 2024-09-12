@@ -19,6 +19,8 @@ public class AdminUserService {
     private final UserRepository userRepository;
     private final UserService userService;
     private final PasswordEncoder passwordEncoder;
+    private final UserRedisRepository userRedisRepository; // Redis repository
+
 
     public List<Long> users(GetUserRequest request) {
         if (request.getStart() < 0 || request.getCount() < 0)
@@ -36,6 +38,20 @@ public class AdminUserService {
     }
 
     public UserDto userInfo(String username) {
+        // First, check Redis cache
+        Optional<UserRedis> userRedisOptional = userRedisRepository.findByUsername(username);
+        if (userRedisOptional.isPresent()) {
+            UserRedis userRedis = userRedisOptional.get();
+            return new UserDto(
+                    userRedis.getId(),
+                    userRedis.getUsername(),
+                    userRedis.getRole()
+            );
+        }
+        // Fallback to database if not found in cache
+        UserE user = userService.user(username);
+        // Cache the user in Redis
+        cacheUserInRedis(user);
         return userService.userInfo(username);
     }
 
@@ -49,6 +65,8 @@ public class AdminUserService {
                 .password(passwordEncoder.encode(request.getPassword()))
                 .build();
         userRepository.save(user);
+        // Cache the user in Redis
+        cacheUserInRedis(user);
         return userInfo(user.getUsername());
     }
 
@@ -65,7 +83,21 @@ public class AdminUserService {
             user.setPassword(passwordEncoder.encode(request.getPassword()));
         }
 
-        userRepository.save(user);
+        user = userRepository.save(user);
+
+        // Update cache
+        cacheUserInRedis(user);
+
         return userInfo(user.getUsername());
+    }
+
+    private void cacheUserInRedis(UserE user) {
+        UserRedis userRedis = new UserRedis();
+        userRedis.setId(user.getId());
+        userRedis.setUsername(user.getUsername());
+        userRedis.setPassword(user.getPassword());
+        userRedis.setRole(user.getRole());
+
+        userRedisRepository.save(userRedis);
     }
 }

@@ -13,6 +13,8 @@ import java.util.Optional;
 public class AdminReportService {
 
     private final ReportRepository reportRepository;
+    private final ReportRedisRepository reportRedisRepository; // Redis repository
+
 
     public List<Long> reports(GetReportEventRequest request) {
         if (request.getStart()<0 || request.getCount()<0) {
@@ -34,7 +36,21 @@ public class AdminReportService {
     }
 
     public ReportDto reportInfo(long id) {
+        // First, check Redis cache
+        Optional<ReportRedis> reportRedisOptional = reportRedisRepository.findById(String.valueOf(id));
+        if (reportRedisOptional.isPresent()) {
+            ReportRedis reportRedis = reportRedisOptional.get();
+            return new ReportDto(
+                    reportRedis.getId(),
+                    reportRedis.getAttendeesCount(),
+                    reportRedis.getDeclinedCount(),
+                    reportRedis.getGeneratedAt()
+            );
+        }
+
         Report report = report(id);
+        // Cache the report in Redis
+        cacheReportInRedis(report);
         return new ReportDto(
                 report.getId(),
                 report.getAttendeesCount(),
@@ -52,5 +68,15 @@ public class AdminReportService {
             );
         }
         return reportOptional.get();
+    }
+
+    private void cacheReportInRedis(Report report) {
+        ReportRedis reportRedis = new ReportRedis();
+        reportRedis.setId(report.getId());
+        reportRedis.setAttendeesCount(report.getAttendeesCount());
+        reportRedis.setDeclinedCount(report.getDeclinedCount());
+        reportRedis.setGeneratedAt(report.getGeneratedAt());
+
+        reportRedisRepository.save(reportRedis);
     }
 }
