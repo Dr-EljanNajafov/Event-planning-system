@@ -4,6 +4,7 @@ package com.github.eventplanningsystem.invitation;
 import com.github.eventplanningsystem.event.Event;
 import com.github.eventplanningsystem.event.EventRepository;
 import com.github.eventplanningsystem.user.UserE;
+import com.github.eventplanningsystem.user.UserRedis;
 import com.github.eventplanningsystem.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -18,10 +19,24 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class InvitationService {
     private final InvitationRepository invitationRepository;
+    private final InvitationRedisRepository invitationRedisRepository; // Redis repository
     private final EventRepository eventRepository;
     private final UserRepository userRepository;
 
     public InvitationDto invitationInfo(long id) {
+
+        // First check Redis cache
+        Optional<InvitationRedis> invitationRedisOptional = invitationRedisRepository.findById(String.valueOf(id));
+        if (invitationRedisOptional.isPresent()) {
+            InvitationRedis invitationRedis = invitationRedisOptional.get();
+            return new InvitationDto(
+                    invitationRedis.getId(),
+                    invitationRedis.getEventId(),
+                    invitationRedis.getUserId(),
+                    InvitationStatus.valueOf(invitationRedis.getInvitationStatus())
+            );
+        }
+        
         Invitation invitation = invitation(id);
         return new InvitationDto(
                 invitation.getId(),
@@ -57,6 +72,10 @@ public class InvitationService {
                 .build();
         invitationRepository.save(invitation);
 
+
+        // Cache the invitation in Redis
+        cacheInvitationInRedis(invitation);
+
         // Вернуть DTO
         return invitationInfo(invitation.getId());
     }
@@ -67,8 +86,24 @@ public class InvitationService {
         UserE currentUser = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
+        // First check Redis cache
+        List<InvitationRedis> invitationRedisList = invitationRedisRepository.findAllByUserId(currentUser.getId());
+        if (!invitationRedisList.isEmpty()) {
+            return invitationRedisList.stream()
+                    .map(invitationRedis -> new InvitationDto(
+                            invitationRedis.getId(),
+                            invitationRedis.getEventId(),
+                            invitationRedis.getUserId(),
+                            InvitationStatus.valueOf(invitationRedis.getInvitationStatus())
+                    ))
+                    .collect(Collectors.toList());
+        }
+
         // Получить все приглашения для данного пользователя
         List<Invitation> invitations = invitationRepository.findAllByUser(currentUser);
+
+        // Cache the invitations in Redis
+        invitations.forEach(this::cacheInvitationInRedis);
 
         // Преобразовать список приглашений в DTO
         return invitations.stream()
@@ -89,5 +124,15 @@ public class InvitationService {
             );
         }
         return invitationOptional.get();
+    }
+
+    private void cacheInvitationInRedis(Invitation invitation) {
+        InvitationRedis invitationRedis = new InvitationRedis();
+        invitationRedis.setId(invitation.getId());
+        invitationRedis.setEventId(invitation.getEvent().getId());
+        invitationRedis.setUserId(invitation.getUser().getId());
+        invitationRedis.setInvitationStatus(invitation.getInvitationStatus().name());
+
+        invitationRedisRepository.save(invitationRedis);
     }
 }

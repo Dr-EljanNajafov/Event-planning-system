@@ -18,6 +18,8 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final JWTService jwtService;
     private final AuthenticationManager authenticationManager;
+    private final UserRedisRepository userRedisRepository;  // Добавляем Redis репозиторий
+
 
     // Retrieve user info by username
     public UserDto userInfo(String username) {
@@ -42,6 +44,10 @@ public class UserService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials"));
 
         String jwtToken = jwtService.generateToken(user);
+
+        // Кэшируем пользователя в Redis после успешной аутентификации
+        cacheUserInRedis(user);
+
         return new AuthenticationResponse(jwtToken);
     }
 
@@ -57,6 +63,9 @@ public class UserService {
 
         userRepository.save(user);
 
+        // Кэшируем пользователя в Redis после успешной аутентификации
+        cacheUserInRedis(user);
+
         String jwtToken = jwtService.generateToken(user);
         return new AuthenticationResponse(jwtToken);
     }
@@ -70,16 +79,33 @@ public class UserService {
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         userRepository.save(user);
 
+        // Обновляем данные в Redis
+        cacheUserInRedis(user);
+
         return signIn(new AuthenticationRequest(request.getUsername(), request.getPassword()));
     }
 
-    // Retrieve user by ID
+    // Retrieve user by username (сначала проверяем Redis, потом БД)
     public UserE user(String username) {
-        return userRepository.findByUsername(username)
+
+        // Попробуем найти пользователя в Redis
+        Optional<UserRedis> userRedisOptional = userRedisRepository.findByUsername(username);
+        if (userRedisOptional.isPresent()) {
+            UserRedis userRedis = userRedisOptional.get();
+            return mapRedisToUser(userRedis);  // Преобразуем из Redis сущности в основную UserE сущность
+        }
+
+        // Если нет в Redis, проверяем БД
+        UserE user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "User with username %s doesn't exist".formatted(username)
                 ));
+
+        // Кэшируем пользователя в Redis
+        cacheUserInRedis(user);
+
+        return user;
     }
 
     // Check if username is already in use
@@ -100,5 +126,26 @@ public class UserService {
                     "Username '%s' is already in use".formatted(username)
             );
         }
+    }
+
+    // Преобразование из Redis сущности в основную сущность UserE
+    private UserE mapRedisToUser(UserRedis userRedis) {
+        return UserE.builder()
+                .id(userRedis.getId())
+                .username(userRedis.getUsername())
+                .password(userRedis.getPassword())
+                .role(userRedis.getRole())
+                .build();
+    }
+
+    // Кэшируем пользователя в Redis
+    private void cacheUserInRedis(UserE user) {
+        UserRedis userRedis = new UserRedis();
+        userRedis.setId(user.getId());
+        userRedis.setUsername(user.getUsername());
+        userRedis.setPassword(user.getPassword());
+        userRedis.setRole(user.getRole());
+
+        userRedisRepository.save(userRedis);
     }
 }
